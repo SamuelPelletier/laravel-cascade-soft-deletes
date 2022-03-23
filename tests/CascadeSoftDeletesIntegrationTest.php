@@ -4,15 +4,14 @@ use PHPUnit\Framework\TestCase;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager;
-use Dyrynda\Database\Support\CascadeSoftDeleteException;
 
-class CascadeSoftDeletesIntegrationTest extends TestCase
+class CascadeSoftDeleteAndRestoreIntegrationTest extends TestCase
 {
     public static function setupBeforeClass(): void
     {
         $manager = new Manager();
         $manager->addConnection([
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
         ]);
 
@@ -68,7 +67,7 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
     {
         $post = Tests\Entities\Post::create([
             'title' => 'How to cascade soft deletes in Laravel',
-            'body'  => 'This is how you cascade soft deletes in Laravel',
+            'body' => 'This is how you cascade soft deletes in Laravel',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -76,6 +75,22 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
         $this->assertCount(3, $post->comments);
         $post->delete();
         $this->assertCount(0, Tests\Entities\Comment::where('post_id', $post->id)->get());
+    }
+
+    /**
+     * Attach some dummy comments to the given post.
+     *
+     * @return void
+     */
+    private function attachCommentsToPost($post)
+    {
+        $post->comments()->saveMany([
+            new Tests\Entities\Comment(['body' => 'This is the first test comment']),
+            new Tests\Entities\Comment(['body' => 'This is the second test comment']),
+            new Tests\Entities\Comment(['body' => 'This is the third test comment']),
+        ]);
+
+        return $post;
     }
 
     /** @test */
@@ -89,10 +104,29 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
         $author->delete();
 
         $pivotEntries = Manager::table('authors__post_types')
-                                ->where('author_id', $author->id)
-                                ->get();
+            ->where('author_id', $author->id)
+            ->get();
 
         $this->assertCount(0, $pivotEntries);
+    }
+
+    /**
+     * Attach some post types to the given author.
+     *
+     * @return void
+     */
+    public function attachPostTypesToAuthor($author)
+    {
+        $author->posttypes()->saveMany([
+
+            Tests\Entities\PostType::create([
+                'label' => 'First Post Type',
+            ]),
+
+            Tests\Entities\PostType::create([
+                'label' => 'Second Post Type',
+            ]),
+        ]);
     }
 
     /** @test */
@@ -100,7 +134,7 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
     {
         $post = Tests\Entities\Post::create([
             'title' => 'How to cascade soft deletes in Laravel',
-            'body'  => 'This is how you cascade soft deletes in Laravel',
+            'body' => 'This is how you cascade soft deletes in Laravel',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -116,12 +150,12 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
      */
     public function it_takes_exception_to_models_that_do_not_implement_soft_deletes()
     {
-        $this->expectException(CascadeSoftDeleteException::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Tests\Entities\NonSoftDeletingPost does not implement Illuminate\Database\Eloquent\SoftDeletes');
 
         $post = Tests\Entities\NonSoftDeletingPost::create([
             'title' => 'Testing when you can use this trait',
-            'body'  => 'Ensure that you can only use this trait if it uses SoftDeletes',
+            'body' => 'Ensure that you can only use this trait if it uses SoftDeletes',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -134,12 +168,12 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
      */
     public function it_takes_exception_to_models_trying_to_cascade_deletes_on_invalid_relationships()
     {
-        $this->expectException(CascadeSoftDeleteException::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Relationships [invalidRelationship, anotherInvalidRelationship] must exist and return an object of type Illuminate\Database\Eloquent\Relations\Relation');
 
         $post = Tests\Entities\InvalidRelationshipPost::create([
             'title' => 'Testing invalid cascade relationships',
-            'body'  => 'Ensure you can only use this trait if the model defines valid relationships',
+            'body' => 'Ensure you can only use this trait if the model defines valid relationships',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -152,14 +186,14 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
     {
         $post = Tests\Entities\InvalidRelationshipPost::create([
             'title' => 'Testing deletes are not executed',
-            'body'  => 'If an invalid relationship is encountered, no deletes should be perofrmed',
+            'body' => 'If an invalid relationship is encountered, no deletes should be perofrmed',
         ]);
 
         $this->attachCommentsToPost($post);
 
         try {
             $post->delete();
-        } catch (CascadeSoftDeleteException $e) {
+        } catch (Exception $e) {
             $this->assertNotNull(Tests\Entities\InvalidRelationshipPost::find($post->id));
             $this->assertCount(3, Tests\Entities\Comment::where('post_id', $post->id)->get());
         }
@@ -170,7 +204,7 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
     {
         $post = Tests\Entities\PostWithStringCascade::create([
             'title' => 'Testing you can use a string for a single relationship',
-            'body'  => 'This falls more closely in line with how other things work in Eloquent',
+            'body' => 'This falls more closely in line with how other things work in Eloquent',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -184,16 +218,15 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
 
     /**
      * @test
-
      */
     public function it_handles_situations_where_the_relationship_method_does_not_exist()
     {
-        $this->expectException(CascadeSoftDeleteException::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Relationship [comments] must exist and return an object of type Illuminate\Database\Eloquent\Relations\Relation');
 
         $post = Tests\Entities\PostWithMissingRelationshipMethod::create([
             'title' => 'Testing that missing relationship methods are accounted for',
-            'body'  => 'In this way, you need not worry about Laravel returning fatal errors',
+            'body' => 'In this way, you need not worry about Laravel returning fatal errors',
         ]);
 
         $post->delete();
@@ -204,7 +237,7 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
     {
         $post = Tests\Entities\ChildPost::create([
             'title' => 'Testing child model inheriting model trait',
-            'body'  => 'This should allow a child class to inherit the soft deletes trait',
+            'body' => 'This should allow a child class to inherit the soft deletes trait',
         ]);
 
         $this->attachCommentsToPost($post);
@@ -239,41 +272,6 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
-    public function it_cascades_a_has_one_relationship()
-    {
-        $post = Tests\Entities\Post::create([
-            'title' => 'Cascade a has one relationship',
-            'body'  => 'This is how you cascade a has one relationship',
-        ]);
-
-        $type = new Tests\Entities\PostType(['label' => 'Test']);
-
-        $post->postType()->save($type);
-
-        $post->delete();
-        $this->assertCount(0, Tests\Entities\PostType::where('id', $type->id)->get());
-    }
-
-    /**
-     * Attach some post types to the given author.
-     *
-     * @return void
-     */
-    public function attachPostTypesToAuthor($author)
-    {
-        $author->posttypes()->saveMany([
-
-            Tests\Entities\PostType::create([
-                'label' => 'First Post Type',
-            ]),
-
-            Tests\Entities\PostType::create([
-                'label' => 'Second Post Type',
-            ]),
-        ]);
-    }
-
     /**
      * Attach some dummy posts (w/ comments) to the given author.
      *
@@ -285,13 +283,13 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
             $this->attachCommentsToPost(
                 Tests\Entities\Post::create([
                     'title' => 'First post',
-                    'body'  => 'This is the first test post',
+                    'body' => 'This is the first test post',
                 ])
             ),
             $this->attachCommentsToPost(
                 Tests\Entities\Post::create([
                     'title' => 'Second post',
-                    'body'  => 'This is the second test post',
+                    'body' => 'This is the second test post',
                 ])
             ),
         ]);
@@ -299,19 +297,19 @@ class CascadeSoftDeletesIntegrationTest extends TestCase
         return $author;
     }
 
-    /**
-     * Attach some dummy comments to the given post.
-     *
-     * @return void
-     */
-    private function attachCommentsToPost($post)
+    /** @test */
+    public function it_cascades_a_has_one_relationship()
     {
-        $post->comments()->saveMany([
-            new Tests\Entities\Comment(['body' => 'This is the first test comment']),
-            new Tests\Entities\Comment(['body' => 'This is the second test comment']),
-            new Tests\Entities\Comment(['body' => 'This is the third test comment']),
+        $post = Tests\Entities\Post::create([
+            'title' => 'Cascade a has one relationship',
+            'body' => 'This is how you cascade a has one relationship',
         ]);
 
-        return $post;
+        $type = new Tests\Entities\PostType(['label' => 'Test']);
+
+        $post->postType()->save($type);
+
+        $post->delete();
+        $this->assertCount(0, Tests\Entities\PostType::where('id', $type->id)->get());
     }
 }

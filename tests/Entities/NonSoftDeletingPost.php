@@ -3,11 +3,11 @@
 namespace Tests\Entities;
 
 use Illuminate\Database\Eloquent\Model;
-use Dyrynda\Database\Support\CascadeSoftDeletes;
+use Pellesam\Database\Support\CascadeSoftDeleteAndRestore;
 
 class NonSoftDeletingPost extends Model
 {
-    use CascadeSoftDeletes;
+    use CascadeSoftDeleteAndRestore;
 
     protected $table = 'posts';
 

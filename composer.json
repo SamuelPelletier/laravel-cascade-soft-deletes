@@ -1,6 +1,6 @@
 {
-  "name": "dyrynda/laravel-cascade-soft-deletes",
-  "description": "Cascading deletes for Eloquent models that implement soft deletes",
+  "name": "pellesam/laravel-cascade-soft-delete-and-restore",
+  "description": "Cascading delete and restore for Eloquent models that implement soft delete",
   "type": "utility",
   "require": {
     "php": "^7.3|^8.0",
@@ -12,7 +12,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Dyrynda\\Database\\Support\\": "src/"
+      "Pellesam\\Database\\Support\\": "src/"
     }
   },
   "autoload-dev": {
@@ -23,9 +23,9 @@
   "license": "MIT",
   "authors": [
     {
-      "name": "Michael Dyrynda",
-      "email": "michael@dyrynda.com.au",
-      "homepage": "https://dyrynda.com.au"
+      "name": "Samuel Pelletier",
+      "email": "pellesam.info@gmail.com",
+      "homepage": "https://samuelpelletier.fr"
     }
   ],
   "minimum-stability": "dev",

@@ -4,15 +4,15 @@ namespace Tests\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Dyrynda\Database\Support\CascadeSoftDeletes;
+use Pellesam\Database\Support\CascadeSoftDeleteAndRestore;
 
 class Author extends Model
 {
-    use SoftDeletes, CascadeSoftDeletes;
+    use SoftDeletes, CascadeSoftDeleteAndRestore;
 
     public $dates = ['deleted_at'];
 
-    protected $cascadeDeletes = ['posts', 'posttypes'];
+    protected $cascadeRelations = ['posts', 'posttypes'];
 
     protected $fillable = ['name'];
 
